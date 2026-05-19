@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ARISE IoT | Web Security</title>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    :root {
+      --bg: #030508;
+      --panel: #080d18;
+      --panel-border: #152040;
+      --text: #e8ecf4;
+      --muted: #8896b3;
+      --brand: #ff525f;
+      --field: #0e1525;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Manrope', sans-serif; }
+    body { 
+      min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px;
+      background: radial-gradient(circle at 15% 8%, #0a1628 0, var(--bg) 60%); color: var(--text);
+    }
+    .card { 
+      width: min(500px, 100%); background: var(--panel); border: 1px solid var(--panel-border); 
+      border-radius: 24px; padding: 35px; box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+    }
+    .title { font-family: 'Space Grotesk', sans-serif; color: var(--brand); letter-spacing: 0.05em; font-size: 1.4rem; display: flex; align-items: center; gap: 12px; }
+    .sub { color: var(--muted); font-size: 0.85rem; margin-top: 8px; margin-bottom: 25px; }
+    
+    .nav-sync { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 30px; }
+    .nav-sync a { 
+      text-decoration: none; text-align: center; padding: 12px; border-radius: 12px; border: 1px solid var(--panel-border);
+      background: rgba(255,255,255,0.03); color: var(--text); font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+      transition: all 0.3s;
+    }
+    .nav-sync a:hover { background: var(--field); border-color: var(--muted); }
+
+    .current { padding: 14px; background: var(--field); border: 1px solid var(--panel-border); border-radius: 12px; font-size: 0.8rem; color: var(--muted); margin-bottom: 25px; }
+    .current b { color: var(--text); }
+
+    .field { display: grid; gap: 8px; margin-bottom: 20px; }
+    label { font-size: 0.75rem; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+    input { 
+      width: 100%; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--panel-border);
+      background: var(--field); color: var(--text); font-size: 0.95rem; transition: border-color 0.3s;
+    }
+    input:focus { outline: none; border-color: var(--brand); }
+
+    .btn { 
+      width: 100%; padding: 14px; border-radius: 12px; border: none; background: var(--brand);
+      color: #fff; font-size: 0.9rem; font-weight: 800; text-transform: uppercase; cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255, 82, 95, 0.3); }
+    .btn.alt { background: transparent; border: 1px solid var(--panel-border); color: var(--text); margin-top: 10px; display: block; text-decoration: none; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="title"><i data-lucide="lock"></i> WEB ACCESS</div>
+    <div class="sub">Update credentials for the dashboard access.</div>
+    
+    <div class="nav-sync">
+      <a href="/dashboard">Dashboard</a>
+      <a href="/wificonfig">WiFi Setup</a>
+      <a href="/appassconfig">AP Password</a>
+      <a href="/blynkconfig">Blynk</a>
+    </div>
+
+    <div class="current">Current login: <b>__CURRENT_USER__ / __CURRENT_PASS__</b></div>
+
+    <form action="/webpassconfig" method="POST">
+      <div class="field">
+        <label for="newuser">New Username</label>
+        <input type="text" name="newuser" id="newuser" minlength="3" required placeholder="Minimal 3 characters">
+      </div>
+      <div class="field">
+        <label for="newpass">New Password</label>
+        <input type="password" name="newpass" id="newpass" minlength="6" required placeholder="Minimal 6 characters">
+      </div>
+      <button type="submit" class="btn">Update Credentials</button>
+      <a href="/dashboard" class="btn alt">Cancel</a>
+    </form>
+  </div>
+
+  <script>lucide.createIcons();</script>
+</body>
+</html>

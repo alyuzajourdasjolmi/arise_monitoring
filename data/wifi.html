@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ARISE IoT | WiFi Config</title>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    :root {
+      --bg: #030508;
+      --panel: #080d18;
+      --panel-border: #152040;
+      --text: #e8ecf4;
+      --muted: #8896b3;
+      --brand: #ff525f;
+      --field: #0e1525;
+      --ok: #34d399;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Manrope', sans-serif; }
+    body {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px;
+      background: radial-gradient(circle at 15% 8%, #0a1628 0, var(--bg) 60%); color: var(--text);
+    }
+    .card {
+      width: min(500px, 100%); background: var(--panel); border: 1px solid var(--panel-border);
+      border-radius: 24px; padding: 35px; box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+    }
+    .title { font-family: 'Space Grotesk', sans-serif; color: #3b82f6; letter-spacing: 0.05em; font-size: 1.4rem; display: flex; align-items: center; gap: 12px; }
+    .sub { color: var(--muted); font-size: 0.85rem; margin-top: 8px; margin-bottom: 25px; }
+    .nav-sync { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 30px; }
+    .nav-sync a {
+      text-decoration: none; text-align: center; padding: 12px; border-radius: 12px; border: 1px solid var(--panel-border);
+      background: rgba(255,255,255,0.03); color: var(--text); font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+      transition: all 0.3s;
+    }
+    .nav-sync a:hover { background: var(--field); border-color: var(--muted); }
+    .field { display: grid; gap: 8px; margin-bottom: 20px; }
+    label { font-size: 0.75rem; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+    input {
+      width: 100%; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--panel-border);
+      background: var(--field); color: var(--text); font-size: 0.95rem; transition: border-color 0.3s;
+    }
+    input:focus { outline: none; border-color: var(--brand); }
+    .btn {
+      width: 100%; padding: 14px; border-radius: 12px; border: none; background: var(--brand);
+      color: #fff; font-size: 0.9rem; font-weight: 800; text-transform: uppercase; cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s; margin-bottom: 10px;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255, 82, 95, 0.3); }
+    .btn.alt { background: transparent; border: 1px solid var(--panel-border); color: var(--text); }
+    .network-list { margin-top: 20px; display: grid; gap: 10px; max-height: 220px; overflow-y: auto; }
+    .network-list::-webkit-scrollbar { width: 4px; }
+    .network-list::-webkit-scrollbar-thumb { background: var(--panel-border); border-radius: 4px; }
+    .item {
+      padding: 12px 15px; border: 1px solid var(--panel-border); background: rgba(255,255,255,0.02);
+      border-radius: 12px; cursor: pointer; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center;
+    }
+    .item:hover { background: var(--field); border-color: var(--muted); }
+    .rssi { color: var(--brand); font-weight: 700; font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="title"><i data-lucide="wifi"></i> WIFI SETUP</div>
+    <div class="sub">Connect ARISE to your local network for cloud sync and remote access.</div>
+
+    <div class="nav-sync">
+      <a href="/dashboard">Dashboard</a>
+      <a href="/webpassconfig">Web Access</a>
+      <a href="/appassconfig">AP Password</a>
+      <a href="/blynkconfig">Blynk</a>
+    </div>
+
+    <form action="/savewifi" method="POST">
+      <div class="field">
+        <label for="ssid">Network SSID</label>
+        <input name="ssid" id="ssid" placeholder="Select from list or type manually" required>
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input name="password" id="password" type="password" placeholder="Leave empty for open networks">
+      </div>
+      <button type="submit" class="btn">Save &amp; Connect</button>
+      <button type="button" class="btn alt" id="scanBtn" onclick="doScan()">Scan Networks</button>
+    </form>
+
+    <div id="networkList" class="network-list"></div>
+  </div>
+
+  <script>
+    lucide.createIcons();
+    function pickSSID(s) {
+      document.getElementById('ssid').value = s;
+    }
+    function doScan() {
+      var btn = document.getElementById('scanBtn');
+      btn.textContent = 'Scanning...';
+      fetch('/scanwifi').then(function(r) { return r.json(); }).then(function(d) {
+        var box = document.getElementById('networkList');
+        var nets = d.networks || [];
+        if (nets.length === 0) {
+          box.innerHTML = '<div style="color:var(--muted);text-align:center;padding:12px">No networks found</div>';
+        } else {
+          box.innerHTML = nets.map(function(n) {
+            return '<div class="item" onclick="pickSSID(\'' + n.ssid.replace(/'/g, "\\'") + '\')">'
+              + '<span>' + n.ssid + (n.secure ? ' &#128274;' : '') + '</span>'
+              + '<span class="rssi">' + n.rssi + ' dBm</span>'
+              + '</div>';
+          }).join('');
+        }
+        btn.textContent = 'Scan Networks';
+      }).catch(function() {
+        btn.textContent = 'Scan Failed';
+      });
+    }
+    doScan();
+  </script>
+</body>
+</html>

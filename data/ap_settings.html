@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AP Security | ARISE IoT</title>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    :root {
+      --bg: #030508; --bg-accent: #060a12; --panel: #080d18; --panel-bright: #0e1525;
+      --line: #152040; --text: #e8ecf4; --muted: #8896b3; --brand: #ff525f;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Manrope', sans-serif; }
+    body { background: var(--bg); color: var(--text); min-height: 100vh; display: flex; }
+    .sidebar { width: 260px; background: var(--bg-accent); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 30px 20px; position: sticky; top: 0; height: 100vh; }
+    .logo { margin-bottom: 40px; }
+    .logo b { font-family: 'Space Grotesk', sans-serif; font-size: 1.4rem; color: #fff; display: block; letter-spacing: 0.1em; }
+    .logo b .ri { color: var(--brand); }
+    .logo span { font-size: 0.5rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.18em; display: block; margin-top: 2px; }
+    .logo .blue { color: #3b82f6; }
+    .nav-item { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 12px; color: var(--muted); text-decoration: none; font-weight: 600; font-size: 0.9rem; margin-bottom: 8px; }
+    .nav-item.active { background: var(--panel-bright); color: #fff; border: 1px solid var(--line); }
+    .main { flex: 1; padding: 40px; display: flex; justify-content: center; align-items: center; }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: 24px; padding: 40px; width: 100%; max-width: 500px; }
+    h1 { font-family: 'Space Grotesk', sans-serif; font-size: 1.8rem; margin-bottom: 10px; }
+    p { color: var(--muted); font-size: 0.9rem; margin-bottom: 30px; }
+    .field { margin-bottom: 20px; }
+    label { display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; color: var(--muted); }
+    input { width: 100%; padding: 14px; background: #050a14; border: 1px solid var(--line); border-radius: 12px; color: #fff; font-size: 1rem; outline: none; }
+    .btn { width: 100%; padding: 14px; border-radius: 12px; border: none; font-weight: 800; cursor: pointer; text-transform: uppercase; background: linear-gradient(135deg, #3b82f6, var(--brand)); color: #fff; margin-top: 10px; }
+    .btn:hover { transform: translateY(-2px); }
+  </style>
+</head>
+<body>
+  <nav class="sidebar">
+    <div class="logo"><b>AR<span class="ri">I</span>SE</b><span>ARTIFICIAL RISK INTELLIGENCE<br/><span class="blue">FOR SMART ENVIRONMENT</span></span></div>
+    <a href="/dashboard" class="nav-item"><i data-lucide="layout-dashboard"></i> Monitoring</a>
+    <a href="/wificonfig" class="nav-item"><i data-lucide="wifi"></i> WiFi Setup</a>
+    <a href="/appassconfig" class="nav-item active"><i data-lucide="share-2"></i> AP Password</a>
+    <a href="/dashboard#settings" class="nav-item"><i data-lucide="settings"></i> Settings</a>
+  </nav>
+  <main class="main">
+    <div class="card">
+      <h1>Hotspot Security</h1>
+      <p>Configure the password for the ARISE local access point (SSID: ARISE-Setup).</p>
+      <form onsubmit="return save()">
+        <div class="field">
+          <label>New AP Password</label>
+          <input type="password" id="np" minlength="8" required>
+        </div>
+        <div class="field">
+          <label>Confirm Password</label>
+          <input type="password" id="cp" minlength="8" required>
+        </div>
+        <button type="submit" class="btn">Update Hotspot Security</button>
+      </form>
+    </div>
+  </main>
+  <script>
+    lucide.createIcons();
+    function save() {
+      const np = document.getElementById('np').value;
+      const cp = document.getElementById('cp').value;
+      if (np !== cp) { alert("Passwords do not match!"); return false; }
+      fetch("/saveappass", { 
+        method: "POST", 
+        headers: { "Content-Type": "application/x-www-form-urlencoded" }, 
+        body: "appass=" + encodeURIComponent(np) 
+      }).then(r => r.text()).then(t => { alert(t); window.location.href = "/dashboard"; });
+      return false;
+    }
+  </script>
+</body>
+</html>

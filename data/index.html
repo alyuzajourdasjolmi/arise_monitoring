@@ -1,0 +1,1442 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ARISE IoT | Command Center</title>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    :root {
+      --bg: #030508;
+      --bg-accent: #060a12;
+      --panel: #080d18;
+      --panel-bright: #0e1525;
+      --line: #152040;
+      --text: #e8ecf4;
+      --muted: #8896b3;
+      --brand: #ff525f;
+      --brand-glow: rgba(255, 82, 95, 0.4);
+      --accent-blue: #3b82f6;
+      --accent-blue-glow: rgba(59, 130, 246, 0.35);
+      --warn: #ffb340;
+      --ok: #34d399;
+      --glass: rgba(8, 13, 24, 0.88);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Manrope', sans-serif; }
+    
+    body { 
+      background: var(--bg); 
+      color: var(--text); 
+      min-height: 100vh;
+      overflow-x: hidden;
+      background-image: radial-gradient(circle at 10% 10%, #0a1628 0, transparent 40%),
+                        radial-gradient(circle at 90% 90%, #1a0810 0, transparent 40%);
+    }
+
+    .app-container { display: flex; min-height: 100vh; }
+
+    /* Sidebar Styling */
+    .sidebar {
+      width: 260px;
+      background: var(--bg-accent);
+      border-right: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      padding: 30px 20px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      z-index: 100;
+    }
+
+    .logo-container { margin-bottom: 40px; }
+    .logo-svg { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+    .logo-fire { width: 36px; height: 36px; }
+    .logo-text-group { display: flex; flex-direction: column; }
+    .logo-arise { font-family: 'Space Grotesk', sans-serif; font-size: 1.5rem; letter-spacing: 0.12em; color: #fff; font-weight: 700; line-height: 1; }
+    .logo-arise .dot-i { color: var(--brand); }
+    .logo-sub { font-size: 0.48rem; color: var(--muted); letter-spacing: 0.18em; font-weight: 700; text-transform: uppercase; margin-top: 2px; }
+    .logo-sub .blue { color: var(--accent-blue); }
+
+    .nav-menu { display: flex; flex-direction: column; gap: 10px; }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      color: var(--muted);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.9rem;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: pointer;
+      border: 1px solid transparent;
+    }
+    .nav-item i { width: 18px; height: 18px; }
+    .nav-item:hover { background: var(--panel); color: var(--text); }
+    .nav-item.active { 
+      background: var(--panel-bright); 
+      color: #fff; 
+      border-color: var(--line);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    }
+
+    .sidebar-footer { margin-top: auto; display: flex; flex-direction: column; gap: 8px; }
+    .emergency-btn { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid var(--brand); background: rgba(255,82,95,0.1); color: var(--brand); font-weight: 800; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.3s; }
+    .emergency-btn:hover { background: var(--brand); color: #fff; }
+    .footer-links { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 15px; display: flex; flex-direction: column; gap: 8px; }
+    .footer-link { display: flex; align-items: center; gap: 10px; color: var(--muted); text-decoration: none; font-size: 0.8rem; font-weight: 600; padding: 6px 0; }
+    .footer-link:hover { color: var(--text); }
+    .avatar { width: 38px; height: 38px; border-radius: 10px; background: #2a1114; display: flex; align-items: center; justify-content: center; }
+    .user-info b { display: block; font-size: 0.85rem; }
+    .user-info span { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+    /* Top Navbar */
+    .top-nav { display: flex; gap: 25px; }
+    .top-nav a { color: var(--muted); text-decoration: none; font-size: 0.85rem; font-weight: 600; letter-spacing: 0.03em; transition: color 0.3s; cursor: pointer; }
+    .top-nav a:hover, .top-nav a.active { color: var(--brand); }
+
+    /* Main Content Styling */
+    .main-content { flex: 1; padding: 30px; max-width: 1400px; margin: 0 auto; width: 100%; }
+
+    .header-bar { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 25px; }
+    .node-info { font-size: 0.75rem; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; display: flex; align-items: center; gap: 15px; }
+    .node-info .dot { width: 6px; height: 6px; background: var(--brand); border-radius: 50%; display: inline-block; box-shadow: 0 0 8px var(--brand); }
+
+    .header-icons { display: flex; gap: 20px; color: var(--muted); }
+    .header-icons i { cursor: pointer; transition: color 0.3s; }
+    .header-icons i:hover { color: var(--brand); }
+
+    /* Status Card */
+    .status-hero {
+      background: linear-gradient(135deg, #0a0f1e, #0d0810);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 25px;
+      position: relative;
+      overflow: hidden;
+    }
+    .status-hero::before {
+      content: ''; position: absolute; top: -50%; left: -20%; width: 60%; height: 200%;
+      background: radial-gradient(circle, rgba(59, 130, 246, 0.04) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .status-main { display: flex; align-items: center; gap: 25px; }
+    .status-indicator { width: 24px; height: 24px; background: var(--ok); border-radius: 50%; box-shadow: 0 0 20px var(--ok); position: relative; }
+    .status-indicator.danger { background: var(--brand); box-shadow: 0 0 20px var(--brand); animation: pulse 1.5s infinite; }
+    
+    @keyframes pulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.2); opacity: 0.7; } 100% { transform: scale(1); opacity: 1; } }
+
+    .status-label h2 { font-family: 'Space Grotesk', sans-serif; font-size: 2.2rem; letter-spacing: 0.02em; }
+    .status-label p { color: var(--muted); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.1em; margin-top: 4px; }
+
+    .status-stats { display: flex; gap: 40px; }
+    .stat-item { text-align: right; }
+    .stat-item span { display: block; font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 5px; }
+    .stat-item b { font-family: 'Space Grotesk', sans-serif; font-size: 1.3rem; color: var(--warn); }
+    .stat-item.threat b { color: var(--brand); }
+
+    /* Grid Layout */
+    .dashboard-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 25px; }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 25px; transition: transform 0.3s; }
+    .card:hover { border-color: rgba(255, 82, 95, 0.3); }
+
+    .card-title { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+    .card-title i { color: var(--brand); }
+
+    /* Gauges */
+    .gauges-container { display: flex; flex-direction: column; gap: 25px; grid-column: span 3; }
+    .gauge-wrapper { position: relative; width: 140px; height: 140px; margin: 0 auto; }
+    .gauge-svg { transform: rotate(-90deg); width: 100%; height: 100%; }
+    .gauge-bg { fill: none; stroke: #121a2e; stroke-width: 8; }
+    .gauge-fill { fill: none; stroke: var(--accent-blue); stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset 0.5s ease-out; }
+    .gauge-value { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
+    .gauge-value h3 { font-size: 1.8rem; font-family: 'Space Grotesk', sans-serif; }
+    .gauge-value span { font-size: 0.7rem; color: var(--muted); display: block; margin-top: -5px; }
+
+    .gauge-status { text-align: center; margin-top: 15px; font-weight: 800; font-size: 0.85rem; letter-spacing: 0.05em; color: var(--ok); }
+    .gauge-status.warn { color: var(--warn); }
+    .gauge-status.danger { color: var(--brand); }
+
+    /* Diagnostics Card */
+    .diagnostics-card { grid-column: span 3; }
+    .diag-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #1c0b0e; }
+    .diag-item:last-child { border: none; }
+    .diag-label { display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--muted); }
+    .diag-label i { width: 16px; height: 16px; color: var(--brand); opacity: 0.7; }
+    .diag-value { font-family: 'Space Grotesk', sans-serif; font-size: 1rem; color: #fff; }
+    .diag-value.percent { color: var(--warn); }
+
+    /* Gas Card */
+    .gas-card { grid-column: span 6; }
+    .gas-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 15px; }
+    .gas-info h3 { font-size: 1.4rem; font-family: 'Space Grotesk', sans-serif; }
+    .gas-info span { color: var(--muted); font-size: 0.8rem; }
+    .gas-quality { background: rgba(52, 211, 153, 0.1); color: var(--ok); border: 1px solid rgba(52, 211, 153, 0.2); padding: 4px 12px; border-radius: 6px; font-size: 0.7rem; font-weight: 800; }
+    .gas-quality.danger { background: rgba(255, 82, 95, 0.1); color: var(--brand); border-color: rgba(255, 82, 95, 0.2); }
+
+    .gas-progress { height: 12px; background: #0e1525; border-radius: 6px; overflow: hidden; position: relative; margin-top: 20px; }
+    .gas-bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent-blue), var(--brand)); transition: width 0.5s; box-shadow: 0 0 10px var(--accent-blue-glow); }
+    .gas-marks { display: flex; justify-content: space-between; margin-top: 8px; font-size: 0.65rem; color: var(--muted); }
+
+    /* Radar Card */
+    .radar-card { grid-column: span 6; position: relative; }
+    .radar-container { width: 100%; height: 240px; position: relative; display: flex; justify-content: center; align-items: flex-end; padding-bottom: 20px; }
+    #radarCanvas { width: 100%; height: 100%; }
+
+    /* Quick Actions Card */
+    .actions-card { grid-column: span 3; }
+    .action-btn { 
+      width: 100%; 
+      padding: 14px; 
+      border-radius: 12px; 
+      border: 1px solid var(--line); 
+      background: var(--bg-accent); 
+      color: #fff; 
+      font-weight: 700; 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      margin-bottom: 12px;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .action-btn:hover { background: var(--panel-bright); transform: translateY(-2px); border-color: var(--muted); }
+    .action-btn.primary { background: var(--brand); border: none; }
+    .action-btn.primary:hover { background: #ff3b4b; box-shadow: 0 4px 15px var(--brand-glow); }
+    .action-btn i { width: 18px; height: 18px; }
+
+    /* Logs Card */
+    .logs-card { grid-column: span 3; display: flex; flex-direction: column; }
+    .logs-container { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; max-height: 250px; padding-right: 5px; }
+    .logs-container::-webkit-scrollbar { width: 4px; }
+    .logs-container::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+    
+    .log-item { font-size: 0.75rem; line-height: 1.4; border-left: 2px solid var(--line); padding-left: 10px; }
+    .log-time { color: var(--muted); margin-right: 5px; }
+    .log-msg { color: #d8b8bc; }
+    .log-msg.highlight { color: var(--warn); }
+    .log-msg.error { color: var(--brand); font-weight: 700; }
+    .log-msg.success { color: var(--ok); }
+
+    /* History & Settings Sections */
+    .section-hidden { display: none; }
+
+    /* Settings Page */
+    .settings-header { border-left: 4px solid var(--brand); padding-left: 20px; margin-bottom: 30px; }
+    .settings-header h1 { font-family: 'Space Grotesk', sans-serif; font-size: 2rem; margin-bottom: 8px; }
+    .settings-header p { color: var(--muted); font-size: 0.9rem; }
+    .settings-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 25px; margin-bottom: 25px; }
+    .cfg-card { background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 30px; }
+    .cfg-card-title { font-family: 'Space Grotesk', sans-serif; font-size: 1.3rem; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; }
+    .cfg-card-title i { color: var(--brand); width: 22px; height: 22px; }
+    .cfg-card-desc { color: var(--muted); font-size: 0.85rem; margin-bottom: 20px; }
+    .cfg-field { margin-bottom: 18px; }
+    .cfg-label { display: block; font-size: 0.7rem; color: var(--muted); font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; }
+    .cfg-input { width: 100%; padding: 13px 15px; background: #000; border: 1px solid var(--line); border-radius: 12px; color: #fff; font-size: 0.95rem; outline: none; font-family: 'Manrope', sans-serif; transition: border-color 0.3s; }
+    .cfg-input:focus { border-color: var(--brand); }
+    .cfg-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+    .cfg-btn { padding: 14px 24px; border-radius: 12px; border: none; font-weight: 800; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; cursor: pointer; transition: all 0.3s; }
+    .cfg-btn-primary { background: var(--brand); color: #fff; width: 100%; }
+    .cfg-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(255,82,95,0.3); }
+    .cfg-btn-outline { background: transparent; border: 1px solid var(--line); color: var(--text); width: 100%; }
+    .cfg-btn-outline:hover { border-color: var(--muted); background: var(--panel-bright); }
+    .cfg-btn-green { background: #22c55e; color: #fff; width: 100%; }
+    .token-row { display: flex; gap: 10px; }
+    .token-row .cfg-input { flex: 1; }
+    .token-copy { padding: 13px 15px; background: var(--panel-bright); border: 1px solid var(--line); border-radius: 12px; cursor: pointer; color: var(--muted); transition: all 0.3s; }
+    .token-copy:hover { color: #fff; border-color: var(--brand); }
+    .status-badge { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; background: rgba(255,179,64,0.08); border: 1px solid rgba(255,179,64,0.2); border-radius: 10px; font-size: 0.8rem; font-weight: 700; color: var(--warn); margin: 15px 0; }
+    .status-badge.connected { background: rgba(34,197,94,0.08); border-color: rgba(34,197,94,0.2); color: var(--ok); }
+    .status-badge .dot-sm { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+    .drift-bar { height: 6px; background: var(--line); border-radius: 3px; margin: 12px 0; overflow: hidden; }
+    .drift-fill { height: 100%; background: linear-gradient(90deg, var(--ok), var(--brand)); border-radius: 3px; transition: width 0.5s; }
+    .drift-row { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--muted); margin-bottom: 20px; }
+    .drift-row b { color: var(--ok); }
+    .toggle-switch { position: relative; width: 48px; height: 26px; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: var(--line); border-radius: 13px; transition: 0.3s; }
+    .toggle-slider:before { content: ''; position: absolute; height: 20px; width: 20px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: 0.3s; }
+    .toggle-switch input:checked + .toggle-slider { background: var(--brand); }
+    .toggle-switch input:checked + .toggle-slider:before { transform: translateX(22px); }
+    .bio-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-top: 1px solid var(--line); margin-top: 15px; }
+    .bio-info { display: flex; align-items: center; gap: 10px; }
+    .bio-info i { color: var(--brand); width: 18px; height: 18px; }
+    .bio-info span { font-size: 0.85rem; font-weight: 700; }
+    .bio-info small { display: block; font-size: 0.7rem; color: var(--muted); font-weight: 400; }
+    .cfg-btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 15px; }
+    .audit-card { background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 25px; }
+    .audit-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .audit-header h3 { font-family: 'Space Grotesk', sans-serif; font-size: 1rem; display: flex; align-items: center; gap: 10px; }
+    .audit-header a { color: var(--brand); font-size: 0.8rem; font-weight: 700; text-decoration: none; }
+    .audit-item { padding: 12px 0; border-bottom: 1px solid #1c0b0e; font-size: 0.8rem; display: flex; gap: 15px; }
+    .audit-item:last-child { border: none; }
+    .audit-time { color: var(--muted); white-space: nowrap; }
+    .audit-tag { font-weight: 800; font-size: 0.7rem; text-transform: uppercase; }
+    .audit-tag.info { color: var(--warn); }
+    .audit-tag.warn { color: var(--brand); }
+    .audit-tag.sys { color: #60a5fa; }
+    .wifi-list { margin-top: 15px; max-height: 180px; overflow-y: auto; display: grid; gap: 8px; }
+    .wifi-list::-webkit-scrollbar { width: 4px; }
+    .wifi-list::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+    .wifi-item { padding: 10px 14px; border: 1px solid var(--line); background: rgba(255,255,255,0.02); border-radius: 10px; cursor: pointer; font-size: 0.8rem; display: flex; justify-content: space-between; }
+    .wifi-item:hover { background: var(--panel-bright); border-color: var(--muted); }
+
+    /* Responsive */
+    @media (max-width: 1100px) {
+      .sidebar { width: 80px; padding: 25px 15px; }
+      .logo-container span, .nav-item span, .emergency-btn span, .footer-link span { display: none; }
+      .nav-item { justify-content: center; padding: 15px; }
+      .gauges-container, .diagnostics-card, .gas-card, .radar-card, .actions-card, .logs-card { grid-column: span 6; }
+      .settings-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 768px) {
+      .app-container { flex-direction: column; }
+      .sidebar { 
+        width: 100%; height: auto; position: relative; padding: 15px; 
+        border-right: none; border-bottom: 1px solid var(--line); 
+        flex-direction: row; align-items: center; justify-content: space-between;
+      }
+      .logo-container { margin-bottom: 0; width: 120px; }
+      .logo-container img { width: 100%; }
+      .sidebar-footer, .nav-menu span, .sidebar > div:nth-child(2) { display: none; }
+      .nav-menu { flex-direction: row; gap: 5px; }
+      .nav-item { padding: 10px; }
+      .nav-item i { margin-right: 0; }
+      
+      .main-content { padding: 15px; }
+      .header-bar { flex-direction: column; gap: 15px; align-items: flex-start; padding: 0 0 20px 0; }
+      .dashboard-grid { grid-template-columns: 1fr; }
+      .logs-card, .gauges-container, .diagnostics-card, .gas-card, .radar-card, .actions-card { grid-column: span 1; }
+      
+      .status-hero { flex-direction: column; gap: 20px; }
+      .status-stats { width: 100%; grid-template-columns: 1fr 1fr; }
+      
+      .arise-assistant-wrap { width: 200px; height: 200px; }
+      .core-orb { width: 60px; height: 60px; }
+      .ring-1 { width: 120px; height: 120px; }
+      .ring-2 { width: 160px; height: 160px; }
+      .ring-3 { width: 200px; height: 200px; }
+    }
+
+    @media (max-width: 480px) {
+      .status-stats { grid-template-columns: 1fr; }
+      .header-section h1 { font-size: 1.8rem; }
+      .emergency-text h1 { font-size: 2rem; }
+    }
+
+    /* Emergency Assistant Overlay */
+    .emergency-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.95);
+      z-index: 9999;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 40px;
+      animation: fadeIn 0.5s ease;
+    }
+    .emergency-overlay.active { display: flex; }
+    /* New Pure CSS ARISE Assistant Core */
+    .arise-assistant-wrap {
+      position: relative;
+      width: 300px;
+      height: 300px;
+      margin-bottom: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .core-orb {
+      width: 100px;
+      height: 100px;
+      background: radial-gradient(circle, #fff 0%, var(--accent-blue) 50%, transparent 100%);
+      border-radius: 50%;
+      box-shadow: 0 0 60px var(--accent-blue);
+      position: relative;
+      z-index: 2;
+      animation: corePulse 2s ease-in-out infinite;
+    }
+    .core-ring {
+      position: absolute;
+      border: 2px solid var(--line);
+      border-radius: 50%;
+      animation: ringRotate 10s linear infinite;
+    }
+    .ring-1 { width: 180px; height: 180px; border-top: 2px solid var(--accent-blue); animation-duration: 4s; }
+    .ring-2 { width: 240px; height: 240px; border-right: 2px solid var(--brand); animation-duration: 7s; animation-direction: reverse; }
+    .ring-3 { width: 300px; height: 300px; border-bottom: 2px solid var(--ok); animation-duration: 12s; }
+
+    /* Emergency Mode for CSS Assistant */
+    .arise-assistant-wrap.emergency .core-orb {
+      background: radial-gradient(circle, #fff 0%, var(--brand) 50%, transparent 100%);
+      box-shadow: 0 0 100px var(--brand);
+      animation: coreVibrate 0.1s linear infinite;
+    }
+    .arise-assistant-wrap.emergency .core-ring {
+      border-color: rgba(255, 82, 95, 0.2);
+      animation-duration: 0.5s !important;
+    }
+
+    @keyframes corePulse {
+      0%, 100% { transform: scale(1); opacity: 0.8; }
+      50% { transform: scale(1.2); opacity: 1; }
+    }
+    @keyframes ringRotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    @keyframes coreVibrate {
+      0% { transform: translate(0,0); }
+      25% { transform: translate(5px, 5px); }
+      50% { transform: translate(-5px, -5px); }
+      75% { transform: translate(5px, -5px); }
+      100% { transform: translate(0,0); }
+    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    /* Education Section Specific Styles */
+    .header-section { margin-bottom: 50px; border-left: 4px solid var(--brand); padding-left: 25px; }
+    .header-section h1 { font-family: 'Space Grotesk', sans-serif; font-size: 2.8rem; margin-bottom: 10px; color: #fff; }
+    .header-section p { color: var(--muted); font-size: 1.1rem; }
+
+    .section-title { margin: 60px 0 30px 0; font-family: 'Space Grotesk', sans-serif; font-size: 1.8rem; border-bottom: 1px solid var(--line); padding-bottom: 15px; display: flex; align-items: center; gap: 15px; }
+    .section-title span { color: var(--brand); font-weight: 800; font-size: 1.2rem; }
+
+    .edu-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 25px; margin-bottom: 40px; }
+    .edu-card { background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 30px; transition: all 0.3s; position: relative; overflow: hidden; }
+    .edu-card:hover { transform: translateY(-5px); border-color: var(--brand); box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+    .edu-card i { color: var(--brand); margin-bottom: 20px; width: 32px; height: 32px; }
+    .edu-card h3 { font-family: 'Space Grotesk', sans-serif; font-size: 1.4rem; margin-bottom: 15px; }
+    .edu-card ul { list-style: none; color: var(--muted); font-size: 0.9rem; line-height: 1.6; }
+    .edu-card li { 
+      margin-bottom: 12px; 
+      position: relative;
+      padding-left: 22px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+    .edu-card li::before { 
+      content: '•'; 
+      color: var(--brand); 
+      font-weight: bold; 
+      position: absolute;
+      left: 0;
+      top: 0;
+      font-size: 1.2rem;
+    }
+    .edu-card p { color: var(--muted); font-size: 0.9rem; line-height: 1.6; margin-bottom: 15px; }
+
+    .danger-card { border-left: 4px solid var(--brand) !important; background: linear-gradient(145deg, #0d080a, #080d18); }
+    .success-card { border-left: 4px solid var(--ok) !important; }
+    .info-card { border-left: 4px solid var(--accent-blue) !important; }
+
+    .pass-box { background: var(--panel-bright); padding: 20px; border-radius: 15px; margin-top: 15px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .pass-item { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 0.8rem; }
+    .pass-item span { color: var(--brand); font-size: 1.1rem; }
+
+    .emergency-numbers { background: linear-gradient(90deg, #ff525f 0%, #ff8e3c 100%); padding: 30px; border-radius: 20px; color: #fff; display: flex; justify-content: space-around; align-items: center; margin-top: 50px; text-align: center; }
+    .num-item h4 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px; opacity: 0.9; margin-bottom: 5px; }
+    .num-item p { font-family: 'Space Grotesk', sans-serif; font-size: 2.5rem; font-weight: 800; }
+
+    .video-section { margin-top: 40px; background: var(--panel-bright); border-radius: 24px; padding: 40px; border: 1px solid var(--line); }
+    .video-container { 
+      position: relative; padding-bottom: 56.25%; height: 0; 
+      border-radius: 16px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    }
+    .video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <aside class="sidebar">
+      <div class="logo-container">
+        <img src="/logo.png" alt="ARISE Logo" style="width: 100%; height: auto; border-radius: 8px;">
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:30px;padding:10px 0;border-bottom:1px solid var(--line)">
+        <span style="width:8px;height:8px;background:var(--accent-blue);border-radius:50%;box-shadow:0 0 8px var(--accent-blue)"></span>
+        <div><b style="font-size:0.85rem;display:block">ARISE Command</b><span style="font-size:0.65rem;color:var(--accent-blue);text-transform:uppercase;letter-spacing:0.1em">System Active</span></div>
+      </div>
+      <nav class="nav-menu">
+        <a class="nav-item active" onclick="showSection('monitoring', this)">
+          <i data-lucide="layout-dashboard"></i>
+          <span>Dashboard</span>
+        </a>
+        <a class="nav-item" onclick="showSection('history', this)">
+          <i data-lucide="history"></i>
+          <span>History</span>
+        </a>
+        <a class="nav-item" onclick="showSection('settings', this)">
+          <i data-lucide="settings"></i>
+          <span>Settings</span>
+        </a>
+        <a class="nav-item" onclick="showSection('education', this)">
+          <i data-lucide="book-open"></i>
+          <span>Edukasi</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button class="emergency-btn" onclick="rebootSystem()">
+          <i data-lucide="alert-triangle"></i> <span>Emergency Override</span>
+        </button>
+        <div class="footer-links">
+          <a href="#" class="footer-link"><i data-lucide="help-circle"></i> <span>Support</span></a>
+          <a href="/logout" class="footer-link"><i data-lucide="log-out"></i> <span>Logout</span></a>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="header-bar">
+        <div style="display:flex;align-items:center;gap:30px;">
+          <div class="node-info">
+            <span>SYSTEM NODE: DX-204</span>
+            <span class="dot"></span>
+            <span>ARISE IOT MONITORING</span>
+          </div>
+          <nav class="top-nav">
+            <a class="active" onclick="showSection('monitoring',document.querySelector('.nav-item'))">Dashboard</a>
+            <a onclick="showSection('history',document.querySelectorAll('.nav-item')[1])">History</a>
+            <a onclick="showSection('settings',document.querySelectorAll('.nav-item')[2])">Settings</a>
+          </nav>
+        </div>
+        <div class="header-icons">
+          <i data-lucide="bell"></i>
+          <i data-lucide="user-cog"></i>
+        </div>
+      </header>
+
+      <!-- MONITORING SECTION -->
+      <section id="section-monitoring">
+        <div class="status-hero">
+          <div class="status-main">
+            <div id="statusIndicator" class="status-indicator"></div>
+            <div class="status-label">
+              <h2 id="statusTitle">STATUS: NORMAL</h2>
+              <p id="statusDesc">All sensors reporting nominal parameters</p>
+            </div>
+          </div>
+          <div class="status-stats">
+            <div class="stat-item">
+              <span>System Uptime</span>
+              <b id="uptime">00:00:00</b>
+            </div>
+            <div class="stat-item threat">
+              <span>Threat Level</span>
+              <b id="threatLevel">0.00%</b>
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard-grid">
+          <div class="gauges-container">
+            <div class="card">
+              <div class="card-title">Thermal Sensor <i data-lucide="thermometer"></i></div>
+              <div class="gauge-wrapper">
+                <svg class="gauge-svg" viewBox="0 0 100 100">
+                  <circle class="gauge-bg" cx="50" cy="50" r="45"></circle>
+                  <circle id="tempCircle" class="gauge-fill" cx="50" cy="50" r="45" stroke-dasharray="283" stroke-dashoffset="283"></circle>
+                </svg>
+                <div class="gauge-value">
+                  <h3 id="valSuhu">0.0</h3>
+                  <span>&deg;C</span>
+                </div>
+              </div>
+              <div id="statusSuhu" class="gauge-status">STABLE</div>
+            </div>
+
+            <div class="card">
+              <div class="card-title">Humidity <i data-lucide="droplets"></i></div>
+              <div class="gauge-wrapper">
+                <svg class="gauge-svg" viewBox="0 0 100 100">
+                  <circle class="gauge-bg" cx="50" cy="50" r="45"></circle>
+                  <circle id="humCircle" class="gauge-fill" cx="50" cy="50" r="45" stroke-dasharray="283" stroke-dashoffset="283" style="stroke: #ffb340;"></circle>
+                </svg>
+                <div class="gauge-value">
+                  <h3 id="valHum">0.0</h3>
+                  <span>%</span>
+                </div>
+              </div>
+              <div id="statusHum" class="gauge-status">OPTIMAL</div>
+            </div>
+          </div>
+
+          <div class="card diagnostics-card">
+            <div class="card-title">System Diagnostics <i data-lucide="shield-check"></i></div>
+            <div class="diag-item">
+              <div class="diag-label"><i data-lucide="wifi"></i> WiFi RSSI</div>
+              <div id="valRssi" class="diag-value">-64 dBm</div>
+            </div>
+            <div class="diag-item">
+              <div class="diag-label"><i data-lucide="cpu"></i> Free Heap</div>
+              <div id="valHeap" class="diag-value">42,180 B</div>
+            </div>
+            <div class="diag-item">
+              <div class="diag-label"><i data-lucide="zap"></i> CPU Load</div>
+              <div id="valCpu" class="diag-value percent">12%</div>
+            </div>
+            <div class="diag-item" style="margin-top: 15px;">
+              <div class="diag-label"><i data-lucide="globe"></i> Access Point</div>
+              <div id="valAp" class="diag-value" style="font-size: 0.8rem; color: var(--ok);">ACTIVE</div>
+            </div>
+            <div class="diag-item">
+              <div class="diag-label"><i data-lucide="map-pin"></i> AP IP</div>
+              <div id="valApIp" class="diag-value" style="font-size: 0.8rem;">192.168.4.1</div>
+            </div>
+          </div>
+
+          <div class="card gas-card">
+            <div class="card-title">MQ2 Gas Concentration <i data-lucide="wind"></i></div>
+            <div class="gas-header">
+              <div class="gas-info">
+                <h3 id="valGasText">BAIK (GOOD)</h3>
+                <span>Current raw value: <b id="valGasRaw">0</b></span>
+              </div>
+              <div id="valGasQuality" class="gas-quality">AIR QUALITY: NOMINAL</div>
+            </div>
+            <div class="gas-progress">
+              <div id="gasBar" class="gas-bar"></div>
+            </div>
+            <div class="gas-marks">
+              <span>0 PPM</span>
+              <span>1000 PPM</span>
+            </div>
+          </div>
+
+          <div class="card actions-card">
+            <div class="card-title">Quick Actions <i data-lucide="zap"></i></div>
+            <button class="action-btn primary" onclick="calibrate()">
+              Calibrate Gas Sensor <i data-lucide="settings-2"></i>
+            </button>
+            <button class="action-btn" id="btnBuzzer" onclick="toggleBuzzer()">
+              Toggle Buzzer (OFF) <i data-lucide="volume-x"></i>
+            </button>
+            <button class="action-btn" onclick="rebootSystem()" style="color: var(--brand);">
+              System Reboot <i data-lucide="refresh-cw"></i>
+            </button>
+          </div>
+
+          <div class="card radar-card">
+            <div class="card-title">Servo Scan Path (180&deg;) <i data-lucide="radar"></i></div>
+            <div class="radar-container">
+              <canvas id="radarCanvas"></canvas>
+            </div>
+          </div>
+
+          <div class="card logs-card">
+            <div class="card-title">System Logs <i data-lucide="terminal"></i></div>
+            <div id="logsContainer" class="logs-container">
+              <div class="log-item"><span class="log-time">[00:00:00]</span> <span class="log-msg">System booting...</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- OTHER SECTIONS (Synchronized) -->
+      <section id="section-history" class="section-hidden">
+        <div class="card" style="min-height: 500px;">
+          <div class="card-title">Event History <i data-lucide="history"></i></div>
+          <div id="historyLogs" class="logs-container" style="max-height: 400px;"></div>
+        </div>
+      </section>
+
+      <section id="section-settings" class="section-hidden">
+        <div class="settings-header">
+          <h1>System Configuration</h1>
+          <p>Manage technical parameters and security credentials for your ARISE IoT terminal.</p>
+        </div>
+
+        <div class="settings-grid">
+          <div class="cfg-card">
+            <div class="cfg-card-title"><i data-lucide="wifi"></i> WiFi Configuration</div>
+            <div class="cfg-row" style="margin-bottom:18px">
+              <div class="cfg-field"><span class="cfg-label">Network SSID</span><input class="cfg-input" id="cfgSsid" placeholder="ARISE_NET_SECURE"></div>
+              <div class="cfg-field"><span class="cfg-label">WPA2 Password</span><input class="cfg-input" id="cfgPass" type="password" placeholder="Enter password"></div>
+            </div>
+            <button class="cfg-btn cfg-btn-primary" onclick="saveWiFiCfg()">Update Connection</button>
+            <button class="cfg-btn cfg-btn-outline" style="margin-top:10px" onclick="scanWiFiCfg()">Scan Networks</button>
+            <div id="wifiCfgList" class="wifi-list"></div>
+          </div>
+
+          <div class="cfg-card">
+            <div class="cfg-card-title"><i data-lucide="cloud"></i> Blynk Cloud</div>
+            <div class="cfg-card-desc">Centralized data orchestration and remote command token.</div>
+            <span class="cfg-label">Auth Token</span>
+            <div class="token-row">
+              <input class="cfg-input" id="cfgBlynk" placeholder="BLNK-X92-021-K">
+              <button class="token-copy" onclick="copyToken()" title="Copy"><i data-lucide="copy"></i></button>
+            </div>
+            <div id="blynkStatus" class="status-badge connected"><span class="dot-sm"></span> STATUS: CONNECTED<br><small>LAST SYNC: --</small></div>
+            <button class="cfg-btn cfg-btn-outline" onclick="saveBlynkCfg()">Save Token</button>
+          </div>
+        </div>
+
+        <div class="settings-grid">
+          <div class="cfg-card">
+            <div class="cfg-card-title"><i data-lucide="crosshair"></i> System Calibration</div>
+            <div class="cfg-card-desc">Perform a manual baseline reset for all environmental and tactical sensors. This will pause data streams for 10 seconds.</div>
+            <div class="drift-row"><span>Sensor Drift Range</span><b id="driftVal">0.04% (NOMINAL)</b></div>
+            <div class="drift-bar"><div class="drift-fill" id="driftBar" style="width:4%"></div></div>
+            <button class="cfg-btn cfg-btn-primary" onclick="calibrate()"><i data-lucide="refresh-cw" style="width:14px;height:14px;margin-right:5px"></i> Manual Baseline Reset</button>
+          </div>
+
+          <div class="cfg-card">
+            <div class="cfg-card-title"><i data-lucide="shield"></i> Admin Credentials</div>
+            <div class="cfg-row" style="margin-bottom:15px">
+              <div class="cfg-field"><span class="cfg-label">Current Admin PIN</span><input class="cfg-input" id="cfgOldUser" type="text" placeholder="Username"></div>
+              <div class="cfg-field"><span class="cfg-label">New Admin PIN</span><input class="cfg-input" id="cfgNewPass" type="password" placeholder="New password"></div>
+            </div>
+            <div class="bio-row">
+              <div class="bio-info"><i data-lucide="fingerprint"></i><div><span>Biometric Authorization</span><small>Require fingerprint for emergency override access.</small></div></div>
+              <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+            </div>
+            <div class="cfg-btn-row">
+              <button class="cfg-btn cfg-btn-primary" onclick="saveCredsCfg()">Save Credentials</button>
+              <button class="cfg-btn cfg-btn-outline" onclick="if(confirm('Revoke all sessions?')){fetch('/logout');pushAudit('ACCESS','WARN','All sessions revoked by admin')}">Revoke Access</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-grid">
+          <div class="cfg-card" id="pushNotificationCard">
+            <div class="cfg-card-title"><i data-lucide="bell-ring"></i> Push Notifications</div>
+            <div class="cfg-card-desc">Receive emergency fire and hazard alerts directly on your smartphone or desktop even when this page is closed.</div>
+            <button id="btnSubscribePush" class="cfg-btn cfg-btn-primary" onclick="subscribePush()"><i data-lucide="bell" style="width:14px;height:14px;margin-right:5px;display:inline-block;vertical-align:middle"></i> Aktifkan Notifikasi</button>
+            <div id="pushStatus" class="status-badge" style="display:none;"><span class="dot-sm"></span> NOTIFIKASI AKTIF</div>
+          </div>
+          
+          <div class="cfg-card" style="display: flex; flex-direction: column; justify-content: center; align-items: center; border-style: dashed; opacity: 0.7;">
+            <i data-lucide="plus-circle" style="width: 32px; height: 32px; color: var(--muted); margin-bottom: 10px;"></i>
+            <span style="color: var(--muted); font-size: 0.85rem; font-weight: 700;">Add Smart Node Extension</span>
+          </div>
+        </div>
+
+        <div class="audit-card">
+          <div class="audit-header">
+            <h3><i data-lucide="file-text"></i> Configuration Audit Logs</h3>
+            <a href="#" onclick="showSection('history',document.querySelectorAll('.nav-item')[1])">View Full Logs</a>
+          </div>
+          <div id="auditLogs">
+            <div class="audit-item"><span class="audit-time">[--:--:--]</span><span class="audit-tag info">INFO:</span><span>System initialized</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="section-education" class="section-hidden">
+        <div class="header-section">
+          <h1>Panduan Keselamatan Kebakaran</h1>
+          <p>Mencegah, Menghadapi, dan Memulihkan dari Bahaya Kebakaran.</p>
+        </div>
+
+        <!-- I. FASE MITIGASI -->
+        <h2 class="section-title"><span>I.</span> Fase Mitigasi: Pencegahan & Persiapan</h2>
+        <div class="edu-grid">
+          <div class="edu-card">
+            <i data-lucide="radar"></i>
+            <h3>Deteksi Dini</h3>
+            <ul>
+              <li>Pasang <b>Smoke Detector</b> di titik rawan seperti dapur dan gudang.</li>
+              <li>Gunakan <b>Sensor Api/Suhu</b> (seperti sistem ARISE ini) jika sering meninggalkan bangunan.</li>
+            </ul>
+          </div>
+          <div class="edu-card">
+            <i data-lucide="zap"></i>
+            <h3>Manajemen Listrik</h3>
+            <ul>
+              <li>Jangan menumpuk steker/stopkontak berlebihan.</li>
+              <li>Gunakan kabel standar <b>SNI</b>. Ganti jika kabel sudah terkelupas atau getas.</li>
+            </ul>
+          </div>
+          <div class="edu-card">
+            <i data-lucide="shield-check"></i>
+            <h3>Alat Pemadam (APAR)</h3>
+            <p>Sediakan APAR jenis Powder/CO2 di lokasi yang mudah dijangkau.</p>
+            <div class="pass-box">
+              <div class="pass-item">1. <span>P</span>ull (Cabut)</div>
+              <div class="pass-item">2. <span>A</span>im (Arahkan)</div>
+              <div class="pass-item">3. <span>S</span>queeze (Tekan)</div>
+              <div class="pass-item">4. <span>S</span>weep (Sapukan)</div>
+            </div>
+          </div>
+          <div class="edu-card">
+            <i data-lucide="map"></i>
+            <h3>Jalur Evakuasi</h3>
+            <ul>
+              <li>Tentukan minimal <b>dua jalan keluar</b> dari setiap ruangan.</li>
+              <li>Pastikan jalur bebas dari tumpukan barang yang menghalangi jalan.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- KLASIFIKASI & JENIS APAR -->
+        <h2 class="section-title"><span>II.</span> Klasifikasi & Jenis APAR</h2>
+        <div class="edu-grid">
+          <div class="edu-card info-card">
+            <i data-lucide="list"></i>
+            <h3>Kelas Kebakaran</h3>
+            <ul>
+              <li><b>Kelas A:</b> Benda Padat (Kayu, Kertas, Plastik).</li>
+              <li><b>Kelas B:</b> Cairan/Gas (Bensin, Solar, LPG).</li>
+              <li><b>Kelas C:</b> Peralatan Listrik (Kabel, Elektronik).</li>
+            </ul>
+          </div>
+          <div class="edu-card">
+            <i data-lucide="droplets" style="color: #3b82f6;"></i>
+            <h3>APAR Air (Water)</h3>
+            <p>Cocok untuk <b>Kelas A</b>. Jangan gunakan pada peralatan listrik atau cairan kimia.</p>
+          </div>
+          <div class="edu-card">
+            <i data-lucide="layers" style="color: #facc15;"></i>
+            <h3>APAR Busa (Foam)</h3>
+            <p>Cocok untuk <b>Kelas A & B</b>. Menutup permukaan api agar oksigen tidak masuk.</p>
+          </div>
+          <div class="edu-card">
+            <i data-lucide="zap-off" style="color: #ef4444;"></i>
+            <h3>Serbuk Kimia (Powder)</h3>
+            <p><b>Serbaguna (Kelas A, B, C)</b>. Paling umum digunakan di rumah dan kantor.</p>
+          </div>
+          <div class="edu-card">
+            <i data-lucide="wind" style="color: #94a3b8;"></i>
+            <h3>CO2</h3>
+            <p>Cocok untuk <b>Kelas B & C</b>. Tidak meninggalkan residu, aman untuk peralatan elektronik.</p>
+          </div>
+        </div>
+
+        <!-- III. FASE RESPONS -->
+        <h2 class="section-title"><span>III.</span> Fase Respons: Saat Terjadi Kebakaran</h2>
+        <div class="edu-grid">
+          <div class="edu-card info-card">
+            <i data-lucide="flame"></i>
+            <h3>1. Penilaian Awal</h3>
+            <ul>
+              <li>Jika api <b>sangat kecil</b>, segera padamkan dengan APAR.</li>
+              <li>Jika api mulai merambat ke <b>plafon/dinding</b>, tinggalkan ruangan segera.</li>
+            </ul>
+          </div>
+          <div class="edu-card success-card">
+            <i data-lucide="door-open"></i>
+            <h3>2. Prosedur Evakuasi</h3>
+            <ul>
+              <li><b>Sentuh Pintu:</b> Gunakan punggung tangan. Jika panas, jangan dibuka.</li>
+              <li><b>Merangkak:</b> Hindari asap beracun. Udara terbersih ada 20cm dari lantai.</li>
+              <li><b>Hindari Lift:</b> Selalu gunakan tangga darurat.</li>
+              <li><b>Segera Keluar:</b> Jangan berhenti untuk mengambil harta benda.</li>
+            </ul>
+          </div>
+          <div class="edu-card danger-card">
+            <i data-lucide="help-circle"></i>
+            <h3>3. Jika Terjebak</h3>
+            <ul>
+              <li>Tutup celah bawah pintu dengan <b>kain/handuk basah</b>.</li>
+              <li>Buka jendela sedikit untuk udara segar dan lambaikan kain terang.</li>
+              <li><b>Jangan pecahkan kaca</b> kecuali sangat perlu (oksigen baru memicu backdraft).</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- IV. LARANGAN MUTLAK -->
+        <h2 class="section-title"><span>IV.</span> Larangan Mutlak (DILARANG!)</h2>
+        <div class="edu-grid">
+          <div class="edu-card danger-card">
+            <i data-lucide="alert-octagon"></i>
+            <h3>Jangan Lakukan Ini:</h3>
+            <ul>
+              <li><b>Air vs Listrik:</b> Jangan siram api listrik dengan air (risiko sengatan maut).</li>
+              <li><b>Air vs Minyak:</b> Air pada minyak panas memicu ledakan. Gunakan tutup panci/kain basah.</li>
+              <li><b>Jangan Bersembunyi:</b> Jangan di bawah kasur/lemari. Petugas sulit menemukan Anda.</li>
+              <li><b>Pintu/Jendela:</b> Jangan buka tiba-tiba di ruangan panas (risiko ledakan api).</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- V. FASE PEMULIHAN -->
+        <h2 class="section-title"><span>V.</span> Fase Pemulihan: Setelah Api Padam</h2>
+        <div class="edu-grid">
+          <div class="edu-card">
+            <i data-lucide="clipboard-list"></i>
+            <h3>Langkah Pemulihan</h3>
+            <ul>
+              <li><b>Izin Petugas:</b> Jangan masuk sebelum dinyatakan aman. Struktur mungkin rapuh.</li>
+              <li><b>Matikan Utilitas:</b> Pastikan aliran listrik dan gas sudah diputus total.</li>
+              <li><b>Dokumentasi:</b> Ambil foto kerusakan untuk laporan atau klaim asuransi.</li>
+              <li><b>Pembersihan:</b> Gunakan masker & sarung tangan (jelaga mengandung zat kimia).</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- NOMOR DARURAT -->
+        <div class="emergency-numbers">
+          <div class="num-item">
+            <h4>Pemadam Kebakaran</h4>
+            <p>113</p>
+          </div>
+          <div class="num-item">
+            <i data-lucide="phone" style="width: 40px; height: 40px; opacity: 0.5;"></i>
+          </div>
+          <div class="num-item">
+            <h4>Darurat Terpadu</h4>
+            <p>112</p>
+          </div>
+        </div>
+
+        <!-- VIDEO SECTION -->
+        <h2 class="section-title"><span>VI.</span> Video Simulasi & Panduan</h2>
+        <div class="video-section">
+          <div class="video-container">
+            <iframe src="https://www.youtube.com/embed/NihNPyDagKE" title="Simulasi Kebakaran" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Emergency Overlay -->
+  <div id="emergencyOverlay" class="emergency-overlay">
+    <div class="arise-assistant-wrap">
+      <div class="core-orb"></div>
+      <div class="core-ring ring-1"></div>
+      <div class="core-ring ring-2"></div>
+      <div class="core-ring ring-3"></div>
+    </div>
+    <div class="emergency-text">
+      <h1 id="emergencyAlertTitle" style="font-family: 'Space Grotesk', sans-serif; font-size: 3rem; color: var(--brand); text-transform: uppercase; margin-bottom: 15px; letter-spacing: 2px; text-shadow: 0 0 20px var(--brand-glow);">!! BAHAYA !!</h1>
+      <p id="emergencyAlertDesc" style="font-size: 1.5rem; color: #fff; font-weight: 700;">API TERDETEKSI! SEGERA EVAKUASI!</p>
+    </div>
+    <button onclick="dismissEmergency()" style="margin-top: 40px; padding: 12px 30px; background: transparent; border: 1px solid #fff; color: #fff; border-radius: 30px; cursor: pointer; font-weight: 800;">MATIKAN ALARM</button>
+  </div>
+
+  <script>
+    if (window.lucide) {
+      lucide.createIcons();
+    }
+    
+    // --- State Management ---
+    const logs = [];
+    const history = [];
+    let lastLevel = -1;
+    let buzzerState = false;
+    let userDismissedAlarm = false;
+
+    function pushLog(msg, type = 'info') {
+      const time = new Date().toLocaleTimeString('en-GB');
+      const logObj = { time, msg, type };
+      logs.unshift(logObj);
+      if (logs.length > 20) logs.pop();
+      history.unshift(logObj);
+      if (history.length > 100) history.pop();
+      renderLogs();
+    }
+
+    function renderLogs() {
+      const container = document.getElementById('logsContainer');
+      const historyContainer = document.getElementById('historyLogs');
+      
+      const mapLog = l => `<div class="log-item">
+        <span class="log-time">[${l.time}]</span> 
+        <span class="log-msg ${l.type}">${l.msg}</span>
+      </div>`;
+      
+      container.innerHTML = logs.map(mapLog).join('');
+      historyContainer.innerHTML = history.map(mapLog).join('');
+    }
+
+    function showSection(id, el) {
+      ['monitoring', 'history', 'settings', 'education'].forEach(s => {
+        document.getElementById('section-' + s).classList.toggle('section-hidden', s !== id);
+      });
+      document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
+      if(el) el.classList.add('active');
+      // Sync top nav
+      const navMap = {monitoring:0,history:1,settings:2,education:3};
+      document.querySelectorAll('.top-nav a').forEach((a,i) => a.classList.toggle('active', i === navMap[id]));
+      // Re-create icons for dynamic content
+      setTimeout(() => {
+        if (window.lucide) lucide.createIcons();
+      }, 50);
+    }
+
+    // --- Radar Animation ---
+    const canvas = document.getElementById('radarCanvas');
+    const ctx = canvas.getContext('2d');
+    let currentAngle = 0;
+    let targetFlamePos = -1;
+
+    function resizeCanvas() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    function drawRadar(angle, flamePos) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height - 10;
+      const radius = Math.min(canvas.width / 2, canvas.height) - 10;
+
+      // Draw arcs
+      ctx.strokeStyle = '#121a2e';
+      ctx.lineWidth = 1;
+      for (let i = 1; i <= 4; i++) {
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, (radius / 4) * i, Math.PI, 0);
+        ctx.stroke();
+      }
+
+      // Draw rays
+      for (let i = 0; i <= 180; i += 45) {
+        const rad = (i * Math.PI) / 180;
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.lineTo(centerX - Math.cos(rad) * radius, centerY - Math.sin(rad) * radius);
+        ctx.stroke();
+      }
+
+      // Draw scan sweep
+      const sweepRad = (angle * Math.PI) / 180;
+      const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
+      gradient.addColorStop(0, 'rgba(59, 130, 246, 0)');
+      gradient.addColorStop(1, 'rgba(59, 130, 246, 0.4)');
+      
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.moveTo(centerX, centerY);
+      ctx.arc(centerX, centerY, radius, Math.PI + sweepRad - 0.2, Math.PI + sweepRad);
+      ctx.lineTo(centerX, centerY);
+      ctx.fill();
+
+      // Scan line
+      ctx.strokeStyle = 'rgba(59, 130, 246, 0.8)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(centerX, centerY);
+      ctx.lineTo(centerX - Math.cos(sweepRad) * radius, centerY - Math.sin(sweepRad) * radius);
+      ctx.stroke();
+
+      // Flame detection dot
+      if (flamePos >= 0) {
+        const fRad = (flamePos * Math.PI) / 180;
+        ctx.fillStyle = '#ff525f';
+        ctx.beginPath();
+        ctx.arc(centerX - Math.cos(fRad) * radius * 0.8, centerY - Math.sin(fRad) * radius * 0.8, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#ff525f';
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+    }
+
+    // --- Gauge Control ---
+    function setGauge(id, val, max = 100) {
+      const circle = document.getElementById(id + 'Circle');
+      const offset = 283 - (val / max) * 283;
+      circle.style.strokeDashoffset = offset;
+    }
+
+    // --- Data Polling ---
+    function updateUI(d) {
+      if (!d || d.error) {
+        if (d && d.error === "Sensor busy") {
+          pushLog('System busy, retrying...', 'highlight');
+        }
+        return;
+      }
+
+      // Numbers with safety
+      const fix = (v, n=1) => (v !== undefined && v !== null) ? Number(v).toFixed(n) : '---';
+      
+      document.getElementById('valSuhu').textContent = fix(d.suhu);
+      document.getElementById('valHum').textContent = fix(d.hum);
+      document.getElementById('valGasRaw').textContent = d.gas || 0;
+      document.getElementById('valGasText').textContent = (['BAIK (GOOD)', 'SEDANG (MODERATE)', 'BURUK (POOR)', 'BAHAYA (DANGER)'][d.airQuality] || 'UNKNOWN');
+      document.getElementById('valRssi').textContent = (d.rssi || 0) + ' dBm';
+      document.getElementById('valHeap').textContent = (d.freeHeap || 0).toLocaleString() + ' B';
+      document.getElementById('uptime').textContent = formatUptime(d.uptime || 0);
+      
+      // Progress & Gauges
+      setGauge('temp', d.suhu || 0, 80);
+      setGauge('hum', d.hum || 0, 100);
+      document.getElementById('gasBar').style.width = (d.gasPercent || 0) + '%';
+      
+      // Threat Level
+      const threat = Math.min(100, ((d.level || 0) * 25) + ((d.gasPercent || 0) / 4)).toFixed(2);
+      document.getElementById('threatLevel').textContent = threat + '%';
+
+      // Status
+      const statusIndicator = document.getElementById('statusIndicator');
+      const statusTitle = document.getElementById('statusTitle');
+      const statusDesc = document.getElementById('statusDesc');
+      const gasQuality = document.getElementById('valGasQuality');
+
+      const levels = ['NORMAL', 'WASPADA', 'BAHAYA', 'KRITIS'];
+      const levelColors = ['#34d399', '#ffb340', '#ff525f', '#ff525f'];
+      const currentLevel = d.level !== undefined ? d.level : 0;
+      
+      statusTitle.textContent = 'STATUS: ' + levels[currentLevel];
+      statusTitle.style.color = levelColors[currentLevel];
+      statusIndicator.className = 'status-indicator' + (currentLevel >= 2 ? ' danger' : '');
+      statusIndicator.style.backgroundColor = levelColors[currentLevel];
+      statusIndicator.style.boxShadow = `0 0 20px ${levelColors[currentLevel]}`;
+      
+      statusDesc.textContent = d.api ? 'API TERDETEKSI! EVAKUASI SEGERA' : (currentLevel > 0 ? 'Parameter sensor tidak normal' : 'All sensors reporting nominal parameters');
+      
+      gasQuality.textContent = 'AIR QUALITY: ' + (['NOMINAL', 'CAUTION', 'POOR', 'DANGER'][d.airQuality] || 'NOMINAL');
+      gasQuality.className = 'gas-quality' + (d.airQuality >= 2 ? ' danger' : '');
+
+      // Radar
+      if (typeof drawRadar === 'function') drawRadar(d.servo || 0, d.flamePos || 0);
+
+      // Alarm Triggering Logic
+      if (currentLevel >= 1) {
+        // Reset dismiss state if threat level changes or if flame is newly detected
+        if (currentLevel !== lastLevel || (!lastFlameState && d.api)) {
+          userDismissedAlarm = false;
+          // Stop any active warning/danger audio if threat level changes to transition smoothly
+          if (alarmActive) {
+            alarmAudio.pause();
+            alarmAudio.currentTime = 0;
+            waspadaAudio.pause();
+            waspadaAudio.currentTime = 0;
+            alarmActive = false;
+          }
+        }
+        
+        if (!alarmActive && !userDismissedAlarm) {
+          triggerEmergencyAlert(currentLevel);
+        }
+      } else {
+        if (alarmActive || lastLevel >= 1) {
+          dismissEmergency();
+        }
+        userDismissedAlarm = false;
+      }
+
+      // Event Logging
+      if (d.level !== lastLevel && lastLevel !== -1) {
+        const type = d.level >= 2 ? 'error' : d.level === 1 ? 'highlight' : 'success';
+        pushLog(`System status changed to ${levels[d.level]}`, type);
+      }
+      if (d.api && lastLevel !== -1 && !lastFlameState) {
+        pushLog(`!! FLAME DETECTED at ${d.flamePos} degrees !!`, 'error');
+      }
+      lastLevel = d.level;
+      lastFlameState = d.api;
+    }
+
+    let lastFlameState = false;
+    let alarmActive = false;
+    const alarmAudio = new Audio('/alarm.mp3');
+    alarmAudio.loop = true;
+    const waspadaAudio = new Audio('/waspada.mp3');
+    waspadaAudio.loop = true;
+
+    function triggerEmergencyAlert(level) {
+      const overlay = document.getElementById('emergencyOverlay');
+      const wrap = overlay.querySelector('.arise-assistant-wrap');
+      const titleEl = document.getElementById('emergencyAlertTitle') || overlay.querySelector('.emergency-text h1');
+      const descEl = document.getElementById('emergencyAlertDesc') || overlay.querySelector('.emergency-text p');
+      
+      overlay.classList.add('active');
+      wrap.classList.add('emergency');
+
+      let activeAudio = alarmAudio;
+
+      if (level === 1) {
+        // WASPADA (Warning) - plays custom waspada.mp3
+        if (titleEl) {
+          titleEl.textContent = "!! WASPADA !!";
+          titleEl.style.color = "var(--warn)"; // #ffb340
+          titleEl.style.textShadow = "0 0 20px rgba(255, 179, 64, 0.4)";
+        }
+        if (descEl) {
+          descEl.textContent = "PARAMETER SENSOR TIDAK NORMAL! HARAP TETAP WASPADA!";
+        }
+        wrap.style.setProperty('--brand', 'var(--warn)');
+        activeAudio = waspadaAudio;
+      } else {
+        // BAHAYA / KRITIS (Danger) - plays standard alarm.mp3
+        if (titleEl) {
+          titleEl.textContent = level === 3 ? "!!! KRITIS !!!" : "!! BAHAYA !!";
+          titleEl.style.color = "var(--brand)"; // #ff525f
+          titleEl.style.textShadow = level === 3 ? "0 0 30px var(--brand-glow)" : "0 0 20px var(--brand-glow)";
+        }
+        if (descEl) {
+          descEl.textContent = level === 3 ? "KEBAKARAN & GAS TINGGI TERDETEKSI! EVAKUASI DARURAT!" : "API TERDETEKSI! SEGERA EVAKUASI!";
+        }
+        wrap.style.setProperty('--brand', '#ff525f');
+        activeAudio = alarmAudio;
+      }
+      
+      if (!alarmActive) {
+        activeAudio.play().catch(e => {
+          console.warn("Audio playback blocked by browser. Please interact with the page.");
+          pushLog("Audio blocked: Please click anywhere to enable alarm sound", "error");
+        });
+        alarmActive = true;
+      }
+    }
+
+    function dismissEmergency() {
+      const overlay = document.getElementById('emergencyOverlay');
+      const wrap = overlay.querySelector('.arise-assistant-wrap');
+      overlay.classList.remove('active');
+      wrap.classList.remove('emergency');
+      
+      alarmAudio.pause();
+      alarmAudio.currentTime = 0;
+      waspadaAudio.pause();
+      waspadaAudio.currentTime = 0;
+      alarmActive = false;
+      userDismissedAlarm = true;
+    }
+
+    function formatUptime(s) {
+      const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+      return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+    }
+
+    function calibrate() {
+      pushLog('Starting gas sensor calibration...', 'highlight');
+      fetch('/calibrate').then(r => r.text()).then(t => {
+        pushLog(t, 'success');
+        alert(t);
+      }).catch(e => pushLog('Calibration failed: ' + e, 'error'));
+    }
+
+    function rebootSystem() {
+      if (confirm('Are you sure you want to reboot the system?')) {
+        fetch('/reboot', { method: 'POST' }).then(() => {
+          pushLog('Reboot command sent. Connection will be lost.', 'error');
+          alert('System rebooting...');
+        });
+      }
+    }
+
+    function toggleBuzzer() {
+      alert('Buzzer is automatically controlled by the system alarm level.');
+    }
+
+    // --- Settings Page Functions ---
+    const auditItems = [];
+    function pushAudit(msg, tag, detail) {
+      const t = new Date().toLocaleTimeString('en-GB');
+      auditItems.unshift({t, tag: tag||'INFO', msg: (detail||msg)});
+      if (auditItems.length > 20) auditItems.pop();
+      const c = document.getElementById('auditLogs');
+      if(c) c.innerHTML = auditItems.map(a => `<div class="audit-item"><span class="audit-time">[${a.t}]</span><span class="audit-tag ${a.tag.toLowerCase()}">${a.tag}:</span><span>${a.msg}</span></div>`).join('');
+    }
+
+    function saveWiFiCfg() {
+      const s = document.getElementById('cfgSsid').value;
+      const p = document.getElementById('cfgPass').value;
+      if(!s){alert('SSID required');return;}
+      fetch('/savewifi',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'ssid='+encodeURIComponent(s)+'&password='+encodeURIComponent(p)}).then(r=>r.text()).then(t=>{
+        pushLog('WiFi config saved: '+s,'success');
+        pushAudit('WIFI','INFO','SSID configuration updated: '+s);
+        alert('WiFi saved! Connecting to '+s+'...');
+      }).catch(e=>{pushLog('WiFi save failed','error');});
+    }
+
+    function scanWiFiCfg() {
+      const list = document.getElementById('wifiCfgList');
+      list.innerHTML = '<div style="color:var(--muted);padding:10px;text-align:center">Scanning...</div>';
+      fetch('/scanwifi').then(r=>r.json()).then(d=>{
+        const nets = d.networks||[];
+        if(!nets.length){list.innerHTML='<div style="color:var(--muted);padding:10px;text-align:center">No networks found</div>';return;}
+        list.innerHTML = nets.map(n=>`<div class="wifi-item" onclick="document.getElementById('cfgSsid').value='${n.ssid.replace(/'/g,"\\'")}'">${n.ssid}${n.secure?' &#128274;':''}<span style="color:var(--brand);font-weight:700">${n.rssi} dBm</span></div>`).join('');
+      }).catch(()=>{list.innerHTML='<div style="color:var(--brand);padding:10px">Scan failed</div>';});
+    }
+
+    function saveBlynkCfg() {
+      const t = document.getElementById('cfgBlynk').value;
+      if(!t){alert('Token required');return;}
+      fetch('/saveblynkconfig',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'blynktoken='+encodeURIComponent(t)}).then(r=>r.text()).then(msg=>{
+        pushLog('Blynk token updated','success');
+        pushAudit('BLYNK','INFO','Auth token updated');
+        alert(msg);
+      }).catch(e=>{pushLog('Blynk save failed','error');});
+    }
+
+    function copyToken() {
+      const inp = document.getElementById('cfgBlynk');
+      inp.select(); document.execCommand('copy');
+      pushLog('Token copied to clipboard','success');
+    }
+
+    function saveCredsCfg() {
+      const u = document.getElementById('cfgOldUser').value;
+      const p = document.getElementById('cfgNewPass').value;
+      if(!u||!p){alert('Both fields required');return;}
+      fetch('/webpassconfig',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'newuser='+encodeURIComponent(u)+'&newpass='+encodeURIComponent(p)}).then(r=>r.text()).then(t=>{
+        pushLog('Admin credentials updated','success');
+        pushAudit('CREDS','WARN','Admin credentials changed by operator');
+        alert(t);
+      }).catch(e=>{pushLog('Credentials update failed','error');});
+    }
+
+    function refresh() {
+      fetch('/api/status').then(r => r.json()).then(d => {
+        updateUI(d);
+        // Update settings page drift info
+        if(d.gasPercent !== undefined) {
+          const drift = (d.gasPercent * 0.04).toFixed(2);
+          const el = document.getElementById('driftVal');
+          const bar = document.getElementById('driftBar');
+          if(el) el.textContent = drift + '% ' + (drift < 5 ? '(NOMINAL)' : '(WARNING)');
+          if(bar) bar.style.width = Math.min(drift * 10, 100) + '%';
+        }
+        // Blynk status
+        const bs = document.getElementById('blynkStatus');
+        if(bs) {
+          const t = new Date().toLocaleTimeString('en-GB');
+          bs.innerHTML = d.rssi && d.rssi > -90 ? `<span class="dot-sm"></span> STATUS: CONNECTED<br><small>LAST SYNC: ${t}</small>` : `<span class="dot-sm"></span> STATUS: OFFLINE`;
+          bs.className = 'status-badge' + (d.rssi && d.rssi > -90 ? ' connected' : '');
+        }
+      }).catch(() => {
+        if (lastLevel !== -99) pushLog('Connection to system lost', 'error');
+        lastLevel = -99;
+      });
+    }
+
+    // --- Web Push Notification Logic ---
+    function registerServiceWorker() {
+      if ('serviceWorker' in navigator && 'PushManager' in window) {
+        navigator.serviceWorker.register('/sw.js')
+          .then(reg => {
+            console.log('Service Worker registered successfully:', reg);
+            checkSubscription(reg);
+          })
+          .catch(err => console.error('Service Worker registration failed:', err));
+      }
+    }
+
+    function checkSubscription(reg) {
+      reg.pushManager.getSubscription()
+        .then(sub => {
+          const btn = document.getElementById('btnSubscribePush');
+          const status = document.getElementById('pushStatus');
+          if (sub) {
+            if (btn) btn.style.display = 'none';
+            if (status) {
+              status.style.display = 'inline-flex';
+              status.className = 'status-badge connected';
+              status.innerHTML = '<span class="dot-sm"></span> NOTIFIKASI AKTIF';
+            }
+          } else {
+            if (btn) btn.style.display = 'block';
+            if (status) status.style.display = 'none';
+          }
+        });
+    }
+
+    function subscribePush() {
+      if (!('serviceWorker' in navigator)) return;
+      
+      navigator.serviceWorker.ready.then(reg => {
+        fetch('/api/vapid-public-key')
+          .then(r => r.json())
+          .then(data => {
+            const convertedKey = urlBase64ToUint8Array(data.publicKey);
+            reg.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: convertedKey
+            })
+            .then(sub => {
+              fetch('/api/subscribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(sub)
+              })
+              .then(() => {
+                pushLog('Push notifications activated successfully!', 'success');
+                checkSubscription(reg);
+              })
+              .catch(e => {
+                console.error('Failed to send subscription to server:', e);
+                pushLog('Push subscription server error', 'error');
+              });
+            })
+            .catch(err => {
+              console.error('Failed to subscribe user:', err);
+              pushLog('Push subscription permission denied', 'error');
+            });
+          });
+      });
+    }
+
+    function urlBase64ToUint8Array(base64String) {
+      const padding = '='.repeat((4 - base64String.length % 4) % 4);
+      const base64 = (base64String + padding)
+        .replace(/\-/g, '+')
+        .replace(/_/g, '/');
+      const rawData = window.atob(base64);
+      const outputArray = new Uint8Array(rawData.length);
+      for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+      }
+      return outputArray;
+    }
+
+    // Dual-Mode Connection (Socket.io WebSocket with HTTP Polling Fallback)
+    let socket;
+    if (typeof io !== 'undefined') {
+      socket = io();
+      socket.on('sensor-update', (d) => {
+        updateUI(d);
+        if(d.gasPercent !== undefined) {
+          const drift = (d.gasPercent * 0.04).toFixed(2);
+          const el = document.getElementById('driftVal');
+          const bar = document.getElementById('driftBar');
+          if(el) el.textContent = drift + '% ' + (drift < 5 ? '(NOMINAL)' : '(WARNING)');
+          if(bar) bar.style.width = Math.min(drift * 10, 100) + '%';
+        }
+        const bs = document.getElementById('blynkStatus');
+        if(bs) {
+          const t = new Date().toLocaleTimeString('en-GB');
+          bs.innerHTML = d.rssi && d.rssi > -90 ? `<span class="dot-sm"></span> STATUS: CONNECTED<br><small>LAST SYNC: ${t}</small>` : `<span class="dot-sm"></span> STATUS: OFFLINE`;
+          bs.className = 'status-badge' + (d.rssi && d.rssi > -90 ? ' connected' : '');
+        }
+      });
+      console.log("Real-time Socket.io active.");
+    } else {
+      console.log("Socket.io not found, falling back to HTTP polling.");
+      refresh(); 
+      setInterval(refresh, 2000);
+    }
+
+    // Call service worker registration on load
+    window.addEventListener('load', () => {
+      registerServiceWorker();
+    });
+    
+    // Auto-navigate based on URL hash (e.g. #history)
+    window.addEventListener('load', () => {
+      const hash = window.location.hash.replace('#', '');
+      const sections = ['monitoring', 'history', 'settings', 'education'];
+      if (sections.includes(hash)) {
+        const navItems = document.querySelectorAll('.nav-item');
+        const indexMap = {monitoring: 0, history: 1, settings: 2, education: 3};
+        showSection(hash, navItems[indexMap[hash]]);
+      }
+    });
+
+    pushLog('Command Center Online', 'success');
+    pushAudit('BOOT','SYS','System configuration module loaded');
+  </script>
+</body>
+</html>

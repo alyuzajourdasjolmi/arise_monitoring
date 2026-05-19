@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ARISE IoT | Success</title>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    :root {
+      --bg: #030508;
+      --panel: #080d18;
+      --panel-border: #152040;
+      --text: #e8ecf4;
+      --muted: #8896b3;
+      --brand: #ff525f;
+      --ok: #34d399;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Manrope', sans-serif; }
+    body { 
+      min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px;
+      background: radial-gradient(circle at 15% 8%, #0a1628 0, var(--bg) 60%); color: var(--text);
+    }
+    .card { 
+      width: min(460px, 100%); background: var(--panel); border: 1px solid var(--panel-border); 
+      border-radius: 24px; padding: 40px; box-shadow: 0 25px 50px rgba(0,0,0,0.5); text-align: center;
+    }
+    .icon-box { 
+      width: 64px; height: 64px; background: rgba(52, 211, 153, 0.1); border: 1px solid var(--ok); 
+      border-radius: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto 25px;
+      color: var(--ok);
+    }
+    h1 { font-family: 'Space Grotesk', sans-serif; font-size: 1.5rem; letter-spacing: 0.05em; margin-bottom: 15px; }
+    p { color: var(--muted); font-size: 0.9rem; line-height: 1.6; margin-bottom: 25px; }
+    .ssid-badge { 
+      display: inline-block; padding: 10px 20px; background: #1c0b0e; border: 1px solid var(--panel-border); 
+      border-radius: 12px; font-weight: 700; color: var(--brand); margin-bottom: 30px;
+    }
+    .btn { 
+      display: block; width: 100%; padding: 14px; border-radius: 12px; border: none; background: var(--brand);
+      color: #fff; font-size: 0.9rem; font-weight: 800; text-transform: uppercase; cursor: pointer;
+      text-decoration: none; transition: transform 0.2s;
+    }
+    .btn:hover { transform: translateY(-2px); }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon-box"><i data-lucide="check-circle-2"></i></div>
+    <h1>CONFIGURATION SAVED</h1>
+    <p>The system is connecting to your network. Please wait a few seconds and then refresh your dashboard.</p>
+    <div class="ssid-badge">__SSID__</div>
+    <a href="/dashboard" class="btn">Return to Command Center</a>
+  </div>
+  <script>lucide.createIcons();</script>
+</body>
+</html>
