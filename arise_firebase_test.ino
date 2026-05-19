@@ -21,9 +21,9 @@ SemaphoreHandle_t dataMutex;
 #include <LittleFS.h>
 #include <HTTPClient.h>
 
-// ===== RENDER SERVER CONFIGURATION =====
-// Ganti dengan URL aplikasi Render Anda setelah dideploy (misal: "https://arise-deteksi-api.onrender.com")
-String renderServerUrl = "https://arise-deteksi-api.onrender.com";
+// ===== LOCAL SERVER CONFIGURATION =====
+// Diarahkan ke IP laptop Anda agar terhubung secara lokal via Wi-Fi
+String renderServerUrl = "http://192.168.1.15:3000";
 
 // ===== OLED CONFIG =====
 #define SCREEN_WIDTH 128
@@ -192,6 +192,7 @@ void handleLoginConfig();
 void handleSaveLoginConfig();
 void handleBlynkConfig();
 void handleSaveBlynkConfig();
+void handleSaveServerIp();
 void handleEducation();
 
 // ===== AP MANAGEMENT =====
@@ -308,6 +309,7 @@ void setup() {
   server.on("/saveappass", HTTP_POST, handleSaveAPPass);
   server.on("/blynkconfig", handleBlynkConfig);
   server.on("/saveblynkconfig", HTTP_POST, handleSaveBlynkConfig);
+  server.on("/saveserverip", HTTP_POST, handleSaveServerIp);
   server.on("/education", handleEducation);
   
   // Serve static files from LittleFS (CSS, JS, images if any)
@@ -618,7 +620,8 @@ void handleAPIStatus() {
     json += "\"airQuality\":" + String(_airQ) + ",";
     json += "\"rssi\":" + String(WiFi.RSSI()) + ",";
     json += "\"freeHeap\":" + String(ESP.getFreeHeap()) + ",";
-    json += "\"uptime\":" + String(millis() / 1000);
+    json += "\"uptime\":" + String(millis() / 1000) + ",";
+    json += "\"serverUrl\":\"" + renderServerUrl + "\"";
     json += "}";
     
     server.send(200, "application/json", json);
@@ -1309,6 +1312,7 @@ void loadWiFiConfig() {
   }
   loginUsername = preferences.getString("loginUser", DEFAULT_USERNAME);
   loginPassword = preferences.getString("loginPass", DEFAULT_PASSWORD);
+  renderServerUrl = preferences.getString("srvUrl", "http://192.168.1.15:3000");
 }
 
 void saveWiFiConfig() {
@@ -1675,6 +1679,33 @@ void handleSaveBlynkConfig() {
     Serial.println("Blynk token updated: " + token);
   } else {
     server.send(400, "text/plain", "Token tidak boleh kosong!");
+  }
+}
+
+void handleSaveServerIp() {
+  if (!checkAuthentication()) {
+    server.sendHeader("Location", "/login");
+    server.send(302, "text/plain", "Redirect to login");
+    return;
+  }
+  
+  if (server.hasArg("ip")) {
+    String newIp = server.arg("ip");
+    newIp.trim();
+    if (newIp.endsWith("/")) {
+      newIp = newIp.substring(0, newIp.length() - 1);
+    }
+    if (!newIp.startsWith("http://") && !newIp.startsWith("https://")) {
+      newIp = "http://" + newIp;
+    }
+    
+    renderServerUrl = newIp;
+    preferences.putString("srvUrl", renderServerUrl);
+    
+    server.send(200, "text/plain", "IP Server berhasil diperbarui!");
+    Serial.println("Server URL dynamically updated: " + renderServerUrl);
+  } else {
+    server.send(400, "text/plain", "IP tidak boleh kosong!");
   }
 }
 

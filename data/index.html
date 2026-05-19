@@ -716,6 +716,14 @@
             <div class="cfg-card-desc">Receive emergency fire and hazard alerts directly on your smartphone or desktop even when this page is closed.</div>
             <button id="btnSubscribePush" class="cfg-btn cfg-btn-primary" onclick="subscribePush()"><i data-lucide="bell" style="width:14px;height:14px;margin-right:5px;display:inline-block;vertical-align:middle"></i> Aktifkan Notifikasi</button>
             <div id="pushStatus" class="status-badge" style="display:none;"><span class="dot-sm"></span> NOTIFIKASI AKTIF</div>
+            
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border);">
+              <span class="cfg-label" style="display:block; margin-bottom:5px; font-weight:600; color:var(--text)"><i data-lucide="server" style="width:14px;height:14px;margin-right:5px;display:inline-block;vertical-align:middle"></i> Telemetry Server IP Address</span>
+              <div style="display: flex; gap: 8px;">
+                <input class="cfg-input" id="cfgServerIp" placeholder="http://192.168.1.15:3000" style="margin-bottom:0;" onfocus="this.dataset.userEdited='true'">
+                <button class="cfg-btn cfg-btn-primary" onclick="saveServerIpCfg()" style="width:auto; white-space:nowrap; padding: 0 15px;">Save IP</button>
+              </div>
+            </div>
           </div>
           
           <div class="cfg-card" style="display: flex; flex-direction: column; justify-content: center; align-items: center; border-style: dashed; opacity: 0.7;">
@@ -1289,9 +1297,31 @@
       }).catch(e=>{pushLog('Credentials update failed','error');});
     }
 
+    function saveServerIpCfg() {
+      const input = document.getElementById('cfgServerIp');
+      const val = input ? input.value.trim() : '';
+      if(!val){alert('Server IP/URL cannot be empty');return;}
+      fetch('/saveserverip',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'ip='+encodeURIComponent(val)}).then(r=>r.text()).then(msg=>{
+        pushLog('Server IP updated','success');
+        pushAudit('SYS','INFO','Telemetry Server IP updated to '+val);
+        alert(msg);
+        if(input) input.dataset.userEdited = '';
+      }).catch(e=>{pushLog('Server IP update failed','error');});
+    }
+
     function refresh() {
       fetch('/api/status').then(r => r.json()).then(d => {
         updateUI(d);
+        
+        // Sync saved Server IP URL to settings field
+        if(d.serverUrl) {
+          const input = document.getElementById('cfgServerIp');
+          if(input && !input.dataset.userEdited) {
+            input.value = d.serverUrl;
+            input.placeholder = d.serverUrl;
+          }
+        }
+        
         // Update settings page drift info
         if(d.gasPercent !== undefined) {
           const drift = (d.gasPercent * 0.04).toFixed(2);
@@ -1398,6 +1428,15 @@
       socket = io();
       socket.on('sensor-update', (d) => {
         updateUI(d);
+        
+        if(d.serverUrl) {
+          const input = document.getElementById('cfgServerIp');
+          if(input && !input.dataset.userEdited) {
+            input.value = d.serverUrl;
+            input.placeholder = d.serverUrl;
+          }
+        }
+        
         if(d.gasPercent !== undefined) {
           const drift = (d.gasPercent * 0.04).toFixed(2);
           const el = document.getElementById('driftVal');

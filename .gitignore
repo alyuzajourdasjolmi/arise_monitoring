@@ -3,3 +3,4 @@ build/
 *.tmp
 .git/
 .vscode/
+node_modules/
