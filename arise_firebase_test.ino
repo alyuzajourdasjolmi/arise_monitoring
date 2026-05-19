@@ -85,14 +85,10 @@ const int GAS_THRESHOLD = 1000;    // Ambang batas MQ-2 tinggi (adjusted baselin
 // Level 0: Normal, Level 1: Waspada, Level 2: Bahaya, Level 3: Kritis
 int alarmLevel = 0;
 int prevLevel = 0;   // Untuk mendeteksi perubahan level alarm
-String alarmStatus[] = {"NORMAL", "WASPADA", "BAHAYA!", "KRITIS!!"};
-// Short status for OLED (max 6 chars)
-String alarmStatusShort[] = {"NORMAL", "WASPAD", "BAHAYA", "KRITIS"};
 
 // ===== AIR QUALITY LEVELS =====
 // 0: Good, 1: Moderate, 2: Poor, 3: Danger
 int airQualityLevel = 0;
-String airQualityText[] = {"BAIK", "SEDANG", "BURUK", "BAHAYA"};
 
 // ===== TIMING VARIABLES =====
 unsigned long lastBuzzerToggle = 0;
@@ -100,7 +96,6 @@ unsigned long lastLEDToggle = 0;
 unsigned long lastServoMove = 0;
 unsigned long lastOLEDUpdate = 0;
 unsigned long lastSensorRead = 0;
-unsigned long lastBlynkUpdate = 0;
 unsigned long lastNotification = 0;
 
 bool buzzerState = false;
@@ -112,7 +107,6 @@ bool servoNaik = true;
 bool servoScanning = true;  // false jika api terdeteksi
 
 // ===== WIFI & SYSTEM =====
-bool powerSaveMode = false;
 String savedSSID = "";
 String savedPassword = "";
 String apPassword = "12345678";  // Default AP password
